@@ -18,13 +18,34 @@ my @cities=('Muenchen',
             'Oberhaching',
 		);
 
-my $output;
-
 my $config = Config::YAML->new( config => "/home/richih/work/git/openweathermap_exporter/openweathermap_exporter.yml");
 #print Dumper $config;
 #print $config->{api_key};
 
-my $firstrun=1;
+my $output = "# TYPE weather_info gauge
+# HELP weather_info Information about the location; the value equals the id of the location
+# TYPE weather_return_code gauge
+# HELP weather_return_code Internal API return code, presumably HTTP codes
+# TYPE weather_temperature_kelvin gauge
+# HELP weather_temperature_kelvin Temperature in Kelvin; for large areas, min/max might differ
+# TYPE weather_measurement_epoch gauge
+# HELP weather_measurement_epoch Unix timestamp of last measurement
+# TYPE weather_wind_meters_per_second gauge
+# HELP weather_wind_meters_per_second Speed in m/s
+# TYPE weather_wind_direction gauge
+# HELP weather_wind_direction Direction in meteorological degress
+# TYPE weather_id gauge
+# HELP weather_id Weather condition id
+# TYPE weather_location_coordinates gauge
+# HELP weather_location_coordinates Geolocation; latitude and longitude
+# TYPE weather_humidity_percent gauge
+# HELP weather_humidity_percent Relative humidity in percent
+# TYPE weather_clouds_percent gauge
+# HELP weather_clouds_percent Cloud cover in percent
+# TYPE weather_sun_epoch gauge
+# HELP weather_sun_epoch
+# TYPE weather_pressure_hectopascal gauge
+# HELP weather_pressure_hectopascal\n";
 
 foreach my $city (@cities) {
 	my $api_key=$config->{api_key};
@@ -35,66 +56,38 @@ foreach my $city (@cities) {
 	die "Could not get $url: $!" unless defined $json;
 	my $decoded_json = decode_json( $json );
 #	print Dumper $decoded_json;
-	$output .= "# TYPE weather_info gauge\n"if $firstrun;
-	$output .= "# HELP weather_info Information about the location; the value equals the id of the location\n"if $firstrun;
 	$output .= "weather_info{location=\"$decoded_json->{name}\",country=\"$decoded_json->{sys}{country}\"} $decoded_json->{id}\n";
 
-	$output .= "# TYPE weather_return_code gauge\n"if $firstrun;
-	$output .= "# HELP weather_return_code Internal API return code, presumably HTTP codes\n"if $firstrun;
 	$output .= "weather_return_code{id=\"$decoded_json->{id}\"} $decoded_json->{cod}\n";
 
-	$output .= "# TYPE weather_temperature_kelvin gauge\n"if $firstrun;
-	$output .= "# HELP weather_temperature_kelvin Temperature in Kelvin; for large areas, min/max might differ\n"if $firstrun;
 	$output .= "weather_temperature_kelvin{id=\"$decoded_json->{id}\",type=\"current\"} $decoded_json->{main}{temp}\n";
 	$output .= "weather_temperature_kelvin{id=\"$decoded_json->{id}\",type=\"max\"} $decoded_json->{main}{temp_max}\n";
 	$output .= "weather_temperature_kelvin{id=\"$decoded_json->{id}\",type=\"min\"} $decoded_json->{main}{temp_min}\n";
 
-	$output .= "# TYPE weather_measurement_epoch gauge\n"if $firstrun;
-	$output .= "# HELP weather_measurement_epoch Unix timestamp of last measurement\n"if $firstrun;
 	$output .= "weather_measurement_epoch{id=\"$decoded_json->{id}\"} $decoded_json->{dt}\n";
 
-	$output .= "# TYPE weather_wind_meters_per_second gauge\n"if $firstrun;
-	$output .= "# HELP weather_wind_meters_per_second Speed in m/s\n"if $firstrun;
 	$output .= "weather_wind_meters_per_second{id=\"$decoded_json->{id}\"} $decoded_json->{wind}{speed}\n";
 
-	$output .= "# TYPE weather_wind_direction gauge\n"if $firstrun;
-	$output .= "# HELP weather_wind_direction Direction in meteorological degress\n"if $firstrun;
 	$output .= "weather_wind_direction{id=\"$decoded_json->{id}\"} $decoded_json->{wind}{deg}\n";
 
 	# TODO I fear there might be multiple arrays in there, sometimes
-	$output .= "# TYPE weather_id gauge\n"if $firstrun;
-	$output .= "# HELP weather_id Weather condition id\n"if $firstrun;
 	$output .= "weather_id{id=\"$decoded_json->{id}\"} $decoded_json->{weather}[0]{id}\n";
 
-	$output .= "# TYPE weather_location_coordinates gauge\n"if $firstrun;
-	$output .= "# HELP weather_location_coordinates Geolocation; latitude and longitude\n"if $firstrun;
 	$output .= "weather_location_coordinates{id=\"$decoded_json->{id}\",dimension=\"latitude\"} $decoded_json->{coord}{lat}\n";
 	$output .= "weather_location_coordinates{id=\"$decoded_json->{id}\",dimension=\"longitude\"} $decoded_json->{coord}{lon}\n";
 
-	$output .= "# TYPE weather_humidity_percent gauge\n"if $firstrun;
-	$output .= "# HELP weather_humidity_percent Relative humidity in percent\n"if $firstrun;
 	$output .= "weather_humidity_percent{id=\"$decoded_json->{id}\"} $decoded_json->{main}{humidity}\n";
 
-	$output .= "# TYPE weather_clouds_percent gauge\n"if $firstrun;
-	$output .= "# HELP weather_clouds_percent Cloud cover in percent\n"if $firstrun;
 	$output .= "weather_clouds_percent{id=\"$decoded_json->{id}\"} $decoded_json->{clouds}{all}\n";
 
-	$output .= "# TYPE weather_sun_epoch gauge\n"if $firstrun;
-	$output .= "# HELP weather_sun_epoch\n"if $firstrun;
 	$output .= "weather_sun_epoch{id=\"$decoded_json->{id}\",change=\"sunrise\"} $decoded_json->{sys}{sunrise}\n";
 	$output .= "weather_sun_epoch{id=\"$decoded_json->{id}\",change=\"sunset\"} $decoded_json->{sys}{sunset}\n";
 
-	$output .= "# TYPE weather_pressure_hectopascal gauge\n"if $firstrun;
-	$output .= "# HELP weather_pressure_hectopascal\n"if $firstrun;
 	$output .= "weather_pressure_hectopascal{id=\"$decoded_json->{id}\",level=\"current\"} $decoded_json->{main}{pressure}\n";
 	$output .= "weather_pressure_hectopascal{id=\"$decoded_json->{id}\",level=\"ground\"} $decoded_json->{main}{grnd_level}\n";
 	$output .= "weather_pressure_hectopascal{id=\"$decoded_json->{id}\",level=\"sea\"} $decoded_json->{main}{sea_level}\n";
 
-#	$output .= "# TYPE weather_ gauge\n"if $firstrun;
-#	$output .= "# HELP weather_\n"if $firstrun;
 #	$output .= "weather_{id=\"$decoded_json->{id}\"} $decoded_json->{}{}\n";
-
-	$firstrun=0;
 }
 
 #print $output;
