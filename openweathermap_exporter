@@ -7,7 +7,6 @@ use Data::Dumper;
 
 use Config::YAML;
 use JSON;
-#use JSON qw( decode_json );
 use LWP::Simple;
 
 my @cities=('Muenchen',
@@ -58,36 +57,36 @@ foreach my $city (@cities) {
 #	print Dumper $decoded_json;
 	$output .= "weather_info{location=\"$decoded_json->{name}\",country=\"$decoded_json->{sys}{country}\"} $decoded_json->{id}\n";
 
-	$output .= "weather_return_code{id=\"$decoded_json->{id}\"} $decoded_json->{cod}\n";
+	$output .= "weather_return_code{name=\"$decoded_json->{name}\"} $decoded_json->{cod}\n";
 
-	$output .= "weather_temperature_kelvin{id=\"$decoded_json->{id}\",type=\"current\"} $decoded_json->{main}{temp}\n";
-	$output .= "weather_temperature_kelvin{id=\"$decoded_json->{id}\",type=\"max\"} $decoded_json->{main}{temp_max}\n";
-	$output .= "weather_temperature_kelvin{id=\"$decoded_json->{id}\",type=\"min\"} $decoded_json->{main}{temp_min}\n";
+	$output .= "weather_temperature_kelvin{name=\"$decoded_json->{name}\",type=\"current\"} $decoded_json->{main}{temp}\n";
+	$output .= "weather_temperature_kelvin{name=\"$decoded_json->{name}\",type=\"max\"} $decoded_json->{main}{temp_max}\n";
+	$output .= "weather_temperature_kelvin{name=\"$decoded_json->{name}\",type=\"min\"} $decoded_json->{main}{temp_min}\n";
 
-	$output .= "weather_measurement_epoch{id=\"$decoded_json->{id}\"} $decoded_json->{dt}\n";
+	$output .= "weather_measurement_epoch{name=\"$decoded_json->{name}\"} $decoded_json->{dt}\n";
 
-	$output .= "weather_wind_meters_per_second{id=\"$decoded_json->{id}\"} $decoded_json->{wind}{speed}\n";
+	$output .= "weather_wind_meters_per_second{name=\"$decoded_json->{name}\"} $decoded_json->{wind}{speed}\n";
 
-	$output .= "weather_wind_direction{id=\"$decoded_json->{id}\"} $decoded_json->{wind}{deg}\n";
+	$output .= "weather_wind_direction{name=\"$decoded_json->{name}\"} $decoded_json->{wind}{deg}\n";
 
 	# TODO I fear there might be multiple arrays in there, sometimes
-	$output .= "weather_id{id=\"$decoded_json->{id}\"} $decoded_json->{weather}[0]{id}\n";
+	$output .= "weather_id{name=\"$decoded_json->{name}\"} $decoded_json->{weather}[0]{id}\n";
 
-	$output .= "weather_location_coordinates{id=\"$decoded_json->{id}\",dimension=\"latitude\"} $decoded_json->{coord}{lat}\n";
-	$output .= "weather_location_coordinates{id=\"$decoded_json->{id}\",dimension=\"longitude\"} $decoded_json->{coord}{lon}\n";
+	$output .= "weather_location_coordinates{name=\"$decoded_json->{name}\",dimension=\"latitude\"} $decoded_json->{coord}{lat}\n";
+	$output .= "weather_location_coordinates{name=\"$decoded_json->{name}\",dimension=\"longitude\"} $decoded_json->{coord}{lon}\n";
 
-	$output .= "weather_humidity_percent{id=\"$decoded_json->{id}\"} $decoded_json->{main}{humidity}\n";
+	$output .= "weather_humidity_percent{name=\"$decoded_json->{name}\"} $decoded_json->{main}{humidity}\n";
 
-	$output .= "weather_clouds_percent{id=\"$decoded_json->{id}\"} $decoded_json->{clouds}{all}\n";
+	$output .= "weather_clouds_percent{name=\"$decoded_json->{name}\"} $decoded_json->{clouds}{all}\n";
 
-	$output .= "weather_sun_epoch{id=\"$decoded_json->{id}\",change=\"sunrise\"} $decoded_json->{sys}{sunrise}\n";
-	$output .= "weather_sun_epoch{id=\"$decoded_json->{id}\",change=\"sunset\"} $decoded_json->{sys}{sunset}\n";
+	$output .= "weather_sun_epoch{name=\"$decoded_json->{name}\",change=\"sunrise\"} $decoded_json->{sys}{sunrise}\n";
+	$output .= "weather_sun_epoch{name=\"$decoded_json->{name}\",change=\"sunset\"} $decoded_json->{sys}{sunset}\n";
 
-	$output .= "weather_pressure_hectopascal{id=\"$decoded_json->{id}\",level=\"current\"} $decoded_json->{main}{pressure}\n";
-	$output .= "weather_pressure_hectopascal{id=\"$decoded_json->{id}\",level=\"ground\"} $decoded_json->{main}{grnd_level}\n";
-	$output .= "weather_pressure_hectopascal{id=\"$decoded_json->{id}\",level=\"sea\"} $decoded_json->{main}{sea_level}\n";
+	$output .= "weather_pressure_hectopascal{name=\"$decoded_json->{name}\",level=\"current\"} $decoded_json->{main}{pressure}\n";
+	$output .= "weather_pressure_hectopascal{name=\"$decoded_json->{name}\",level=\"ground\"} $decoded_json->{main}{grnd_level}\n" if defined $decoded_json->{main}{grnd_level};
+	$output .= "weather_pressure_hectopascal{name=\"$decoded_json->{name}\",level=\"sea\"} $decoded_json->{main}{sea_level}\n" if defined $decoded_json->{main}{sea_level};
 
-#	$output .= "weather_{id=\"$decoded_json->{id}\"} $decoded_json->{}{}\n";
+#	$output .= "weather_{name=\"$decoded_json->{name}\"} $decoded_json->{}{}\n";
 }
 
 #print $output;
