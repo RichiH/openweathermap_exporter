@@ -9,17 +9,8 @@ use Config::YAML;
 use JSON;
 use LWP::Simple;
 
-my @cities=('Muenchen',
-            'Holzkirchen',
-            'Grafing bei Munchen',
-            'Dachau',
-            'Erding',
-            'Oberhaching',
-		);
 
 my $config = Config::YAML->new( config => "/home/richih/work/git/openweathermap_exporter/openweathermap_exporter.yml");
-#print Dumper $config;
-#print $config->{api_key};
 
 my $output = "# TYPE weather_info gauge
 # HELP weather_info Information about the location; the value equals the id of the location
@@ -46,7 +37,7 @@ my $output = "# TYPE weather_info gauge
 # TYPE weather_pressure_hectopascal gauge
 # HELP weather_pressure_hectopascal\n";
 
-foreach my $city (@cities) {
+foreach my $city (@{$config->{cities}}) {
 	my $api_key=$config->{api_key};
 	my $url="http://api.openweathermap.org/data/2.5/weather?q=$city&appid=$api_key";
 	my $json = get($url);
@@ -54,7 +45,7 @@ foreach my $city (@cities) {
 	#TODO count up errors instead of dying
 	die "Could not get $url: $!" unless defined $json;
 	my $decoded_json = decode_json( $json );
-#	print Dumper $decoded_json;
+
 	$output .= "weather_info{location=\"$decoded_json->{name}\",country=\"$decoded_json->{sys}{country}\"} $decoded_json->{id}\n";
 
 	$output .= "weather_return_code{name=\"$decoded_json->{name}\"} $decoded_json->{cod}\n";
