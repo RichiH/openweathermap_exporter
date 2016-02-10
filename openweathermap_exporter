@@ -42,7 +42,7 @@ foreach my $city (@{$config->{cities}}) {
 	my $url="http://api.openweathermap.org/data/2.5/weather?q=$city&appid=$api_key";
 	my $json = get($url);
 
-	#TODO count up errors instead of dying
+	#TODO count up errors instead of dying once this becomes a daemon
 	die "Could not get $url: $!" unless defined $json;
 	my $decoded_json = decode_json( $json );
 
