@@ -10,4 +10,8 @@ cities:
   - Munich
   - Ulaanbaatar
   - Isachsen
+latlons:
+  - [40.2010176,-72.6806685]
+zips:
+  - 90210
 ````
