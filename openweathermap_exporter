@@ -9,8 +9,10 @@ use Config::YAML;
 use JSON;
 use LWP::Simple;
 
+my $configFile = $ARGV[0] || "openweathermap_exporter.yml";
+my $port = $ARGV[1] || "9091";
 
-my $config = Config::YAML->new( config => "/home/richih/work/git/openweathermap_exporter/openweathermap_exporter.yml");
+my $config = Config::YAML->new( config => $ARGV[0]);
 
 my $output = "# TYPE weather_info gauge
 # HELP weather_info Information about the location; the value equals the id of the location
@@ -37,53 +39,75 @@ my $output = "# TYPE weather_info gauge
 # TYPE weather_pressure_hectopascal gauge
 # HELP weather_pressure_hectopascal\n";
 
-foreach my $city (@{$config->{cities}}) {
-	my $api_key=$config->{api_key};
-	my $url="http://api.openweathermap.org/data/2.5/weather?q=$city&appid=$api_key";
-	my $json = get($url);
+my @urls;
+my $api_key=$config->{api_key};
 
-	#TODO count up errors instead of dying once this becomes a daemon
-	die "Could not get $url: $!" unless defined $json;
-	my $decoded_json = decode_json( $json );
+if ($config->{cities}) {
+        foreach my $city (@{$config->{cities}}) {
+                push @urls, "http://api.openweathermap.org/data/2.5/weather?q=$city&appid=$api_key";
+        }
+}
 
-	$output .= "weather_info{location=\"$decoded_json->{name}\",country=\"$decoded_json->{sys}{country}\"} $decoded_json->{id}\n";
+if ($config->{latlons}) {
+        foreach my $latlon (@{$config->{latlons}}) {
+                my $lat = $latlon->[0];
+                my $lon = $latlon->[1];
+                push @urls, "http://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lon&appid=$api_key";
+        }
+}
 
-	$output .= "weather_return_code{name=\"$decoded_json->{name}\"} $decoded_json->{cod}\n";
+if ($config->{zips}) {
+        foreach my $zip (@{$config->{zips}}) {
+                push @urls, "http://api.openweathermap.org/data/2.5/weather?zip=$zip,us&appid=$api_key";
+        }
+}
 
-	$output .= "weather_temperature_kelvin{name=\"$decoded_json->{name}\",type=\"current\"} $decoded_json->{main}{temp}\n";
-	$output .= "weather_temperature_kelvin{name=\"$decoded_json->{name}\",type=\"max\"} $decoded_json->{main}{temp_max}\n";
-	$output .= "weather_temperature_kelvin{name=\"$decoded_json->{name}\",type=\"min\"} $decoded_json->{main}{temp_min}\n";
+foreach my $url (@urls) {
+        my $api_key=$config->{api_key};
+        my $json = get($url);
 
-	$output .= "weather_measurement_epoch{name=\"$decoded_json->{name}\"} $decoded_json->{dt}\n";
+        #TODO count up errors instead of dying once this becomes a daemon
+        die "Could not get $url: $!" unless defined $json;
+        my $decoded_json = decode_json( $json );
 
-	$output .= "weather_wind_meters_per_second{name=\"$decoded_json->{name}\"} $decoded_json->{wind}{speed}\n";
+        $output .= "weather_info{location=\"$decoded_json->{name}\",country=\"$decoded_json->{sys}{country}\"} $decoded_json->{id}\n";
 
-	$output .= "weather_wind_direction{name=\"$decoded_json->{name}\"} $decoded_json->{wind}{deg}\n";
+        $output .= "weather_return_code{name=\"$decoded_json->{name}\"} $decoded_json->{cod}\n";
 
-	# TODO I fear there might be multiple arrays in there, sometimes
-	$output .= "weather_id{name=\"$decoded_json->{name}\"} $decoded_json->{weather}[0]{id}\n";
+        $output .= "weather_temperature_kelvin{name=\"$decoded_json->{name}\",type=\"current\"} $decoded_json->{main}{temp}\n";
+        $output .= "weather_temperature_kelvin{name=\"$decoded_json->{name}\",type=\"max\"} $decoded_json->{main}{temp_max}\n";
+        $output .= "weather_temperature_kelvin{name=\"$decoded_json->{name}\",type=\"min\"} $decoded_json->{main}{temp_min}\n";
 
-	$output .= "weather_location_coordinates{name=\"$decoded_json->{name}\",dimension=\"latitude\"} $decoded_json->{coord}{lat}\n";
-	$output .= "weather_location_coordinates{name=\"$decoded_json->{name}\",dimension=\"longitude\"} $decoded_json->{coord}{lon}\n";
+        $output .= "weather_measurement_epoch{name=\"$decoded_json->{name}\"} $decoded_json->{dt}\n";
 
-	$output .= "weather_humidity_percent{name=\"$decoded_json->{name}\"} $decoded_json->{main}{humidity}\n";
+        $output .= "weather_wind_meters_per_second{name=\"$decoded_json->{name}\"} $decoded_json->{wind}{speed}\n";
 
-	$output .= "weather_clouds_percent{name=\"$decoded_json->{name}\"} $decoded_json->{clouds}{all}\n";
+        $output .= "weather_wind_direction{name=\"$decoded_json->{name}\"} $decoded_json->{wind}{deg}\n";
 
-	$output .= "weather_sun_epoch{name=\"$decoded_json->{name}\",change=\"sunrise\"} $decoded_json->{sys}{sunrise}\n";
-	$output .= "weather_sun_epoch{name=\"$decoded_json->{name}\",change=\"sunset\"} $decoded_json->{sys}{sunset}\n";
+        # TODO I fear there might be multiple arrays in there, sometimes
+        $output .= "weather_id{name=\"$decoded_json->{name}\"} $decoded_json->{weather}[0]{id}\n";
 
-	$output .= "weather_pressure_hectopascal{name=\"$decoded_json->{name}\",level=\"current\"} $decoded_json->{main}{pressure}\n";
-	$output .= "weather_pressure_hectopascal{name=\"$decoded_json->{name}\",level=\"ground\"} $decoded_json->{main}{grnd_level}\n" if defined $decoded_json->{main}{grnd_level};
-	$output .= "weather_pressure_hectopascal{name=\"$decoded_json->{name}\",level=\"sea\"} $decoded_json->{main}{sea_level}\n" if defined $decoded_json->{main}{sea_level};
+        $output .= "weather_location_coordinates{name=\"$decoded_json->{name}\",dimension=\"latitude\"} $decoded_json->{coord}{lat}\n";
+        $output .= "weather_location_coordinates{name=\"$decoded_json->{name}\",dimension=\"longitude\"} $decoded_json->{coord}{lon}\n";
 
-#	$output .= "weather_{name=\"$decoded_json->{name}\"} $decoded_json->{}{}\n";
+        $output .= "weather_humidity_percent{name=\"$decoded_json->{name}\"} $decoded_json->{main}{humidity}\n";
+
+        $output .= "weather_clouds_percent{name=\"$decoded_json->{name}\"} $decoded_json->{clouds}{all}\n";
+
+        $output .= "weather_sun_epoch{name=\"$decoded_json->{name}\",change=\"sunrise\"} $decoded_json->{sys}{sunrise}\n";
+        $output .= "weather_sun_epoch{name=\"$decoded_json->{name}\",change=\"sunset\"} $decoded_json->{sys}{sunset}\n";
+
+        $output .= "weather_pressure_hectopascal{name=\"$decoded_json->{name}\",level=\"current\"} $decoded_json->{main}{pressure}\n";
+        $output .= "weather_pressure_hectopascal{name=\"$decoded_json->{name}\",level=\"ground\"} $decoded_json->{main}{grnd_level}\n" if defined $decoded_json->{main}{grnd_level};
+        $output .= "weather_pressure_hectopascal{name=\"$decoded_json->{name}\",level=\"sea\"} $decoded_json->{main}{sea_level}\n" if defined $decoded_json->{main}{sea_level};
+
+#       $output .= "weather_{name=\"$decoded_json->{name}\"} $decoded_json->{}{}\n";
 }
 
 #print $output;
 
-my @curl = ('curl', '-X', 'POST', '--data-binary', $output, 'http://localhost:9091/metrics/job/openweathermap_exporter');
+my @curl = ('curl', '-X', 'POST', '--data-binary', $output, "http://localhost:$port/metrics/job/openweathermap_exporter");
 unless (system (@curl) == 0) {
-	print "ERROR: $!\n";
-	# TODO If this becomes a long-running process, we should expose this. But then, I wouldn't be using curl, so meh
+        print "ERROR: $!\n";
+        # TODO If this becomes a long-running process, we should expose this. But then, I wouldn't be using curl, so meh
 }
