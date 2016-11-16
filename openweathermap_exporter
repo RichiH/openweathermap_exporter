@@ -87,7 +87,9 @@ foreach my $url (@urls) {
 
         $output .= "weather_wind_meters_per_second{name=\"$decoded_json->{name}\"} $decoded_json->{wind}{speed}\n";
 
-        $output .= "weather_wind_direction{name=\"$decoded_json->{name}\"} $decoded_json->{wind}{deg}\n";
+        # This is not always returned
+        $output .= "weather_wind_direction{name=\"$decoded_json->{name}\"} $decoded_json->{wind}{deg}\n"
+                if defined $decoded_json->{wind}{deg};
 
         # TODO I fear there might be multiple arrays in there, sometimes
         $output .= "weather_id{name=\"$decoded_json->{name}\"} $decoded_json->{weather}[0]{id}\n";
