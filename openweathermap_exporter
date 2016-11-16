@@ -7,12 +7,16 @@ use Data::Dumper;
 
 use Config::YAML;
 use JSON;
-use LWP::Simple;
+use LWP::UserAgent::Determined;
+use URI::Escape;
 
 my $configFile = $ARGV[0] || "openweathermap_exporter.yml";
 my $port = $ARGV[1] || "9091";
 
-my $config = Config::YAML->new( config => $ARGV[0]);
+my $config = Config::YAML->new( config => $configFile);
+
+my $ua = LWP::UserAgent::Determined->new;
+$ua->timing("1,2,5");
 
 my $output = "# TYPE weather_info gauge
 # HELP weather_info Information about the location; the value equals the id of the location
@@ -40,11 +44,12 @@ my $output = "# TYPE weather_info gauge
 # HELP weather_pressure_hectopascal\n";
 
 my @urls;
-my $api_key=$config->{api_key};
+my $api_key = $config->{api_key};
+my $pushgateway = defined $config->{pushgateway} ? $config->{pushgateway} : 'localhost:9091';
 
 if ($config->{cities}) {
         foreach my $city (@{$config->{cities}}) {
-                push @urls, "http://api.openweathermap.org/data/2.5/weather?q=$city&appid=$api_key";
+                push @urls, "http://api.openweathermap.org/data/2.5/weather?q=". uri_escape($city) ."&appid=$api_key";
         }
 }
 
@@ -64,11 +69,11 @@ if ($config->{zips}) {
 
 foreach my $url (@urls) {
         my $api_key=$config->{api_key};
-        my $json = get($url);
+        my $json = $ua->get($url);
 
         #TODO count up errors instead of dying once this becomes a daemon
-        die "Could not get $url: $!" unless defined $json;
-        my $decoded_json = decode_json( $json );
+        die "Could not get $url: $!" unless $json->is_success;
+        my $decoded_json = decode_json( $json->content );
 
         $output .= "weather_info{location=\"$decoded_json->{name}\",country=\"$decoded_json->{sys}{country}\"} $decoded_json->{id}\n";
 
@@ -104,10 +109,9 @@ foreach my $url (@urls) {
 #       $output .= "weather_{name=\"$decoded_json->{name}\"} $decoded_json->{}{}\n";
 }
 
-#print $output;
+my $response = $ua->post('http://'. $pushgateway .'/metrics/job/openweathermap_exporter',
+                                Content_Type => 'form-data',
+                                Content => $output);
 
-my @curl = ('curl', '-X', 'POST', '--data-binary', $output, "http://localhost:$port/metrics/job/openweathermap_exporter");
-unless (system (@curl) == 0) {
-        print "ERROR: $!\n";
-        # TODO If this becomes a long-running process, we should expose this. But then, I wouldn't be using curl, so meh
-}
+$response->is_success ? exit 0 : print Dumper $response ; exit 1;
+
